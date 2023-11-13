@@ -39,4 +39,4 @@ En er zijn meer beperkingen aan dit onderzoek. Enerzijds hebben we hele fijnmazi
  
 ### Deze repository
 
-Ik heb de code niet al teveel geabstraheerd om het leesbaar te houden. In de folder [src][.src/] vind je enkele scripts voor importeren, parsen, verrijken en berekenen van data. In de folder [notebooks](.notebooks/) vind je een simpele Jupyter Notebook met wat calculaties en visualisatiemogelijkheden. De ruwe WOZ-data kunnen we niet verstrekken. De BAG data zijn openbaar en de bewerkte worden op aanvraag verstrekt. 
+Ik heb de code niet al teveel geabstraheerd om het leesbaar te houden. In de folder [src][src/] vind je enkele scripts voor importeren, parsen, verrijken en berekenen van data. In de folder [notebooks](notebooks/) vind je een simpele Jupyter Notebook met wat calculaties en visualisatiemogelijkheden. De ruwe WOZ-data kunnen we niet verstrekken. De BAG data zijn openbaar en de bewerkte worden op aanvraag verstrekt. 
