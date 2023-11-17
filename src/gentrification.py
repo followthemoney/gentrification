@@ -32,13 +32,17 @@ def get_woz(path_in: str,
             woz = json.loads(line)
             wozwaarden = woz.get('wozWaarden')
             wozobjecten = woz.get('wozObject')
-            if wozobjecten is not None:
-                nummeraanduiding_id = wozobjecten.get('nummeraanduidingid')
-                if nummeraanduiding_id is not None:
-                    wozdict.update({'nummeraanduiding_id': int(nummeraanduiding_id),
-                                    'postcode': wozobjecten.get('postcode')})
-                else:
-                    continue
+            if wozobjecten != None:
+                wozdict.update({'nummeraanduiding_id': wozobjecten.get('nummeraanduidingid'),
+                                'addresseerbaarobjectid': wozobjecten.get('adresseerbaarobjectid'),
+                                'straatnaam': wozobjecten.get('straatnaam'),
+                                'huisnummer': wozobjecten.get('huisnummer'),
+                                'huisletter': wozobjecten.get('huisletter'),
+                                'huisnummertoevoeging': wozobjecten.get('huisnummertoevoeging'),
+                                'postcode': wozobjecten.get('postcode'),
+                                'woonplaatsnaam': wozobjecten.get('woonplaatsnaam'),
+                                'wozobjectnummer': wozobjecten.get('wozobjectnummer')
+                                })
             else:
                 continue
 
@@ -46,15 +50,12 @@ def get_woz(path_in: str,
             for waarde in wozwaarden:
                 if waarde.get('peildatum') == '2016-01-01':
                     wozdict.update({'woz_2016': waarde.get('vastgesteldeWaarde')})
-                else:
-                    wozdict.update({'woz_2016': 0})
+                if waarde.get('peildatum') == '2021-01-01': 
+                    wozdict.update({'woz_2021': waarde.get('vastgesteldeWaarde')})
                 if waarde.get('peildatum') == '2022-01-01': 
                     wozdict.update({'woz_2022': waarde.get('vastgesteldeWaarde')})
-                else:
-                    wozdict.update({'woz_2022': 0})
-            # Remove empty or invalid values
-            if wozdict.get('woz_2022') and wozdict.get('woz_2016') is not None:
-                wozlist.append(wozdict)
+
+            wozlist.append(wozdict)
 
     df = pd.DataFrame(wozlist)
     del wozlist
@@ -80,16 +81,16 @@ def get_bag(path_in: str,
     df = pd.read_parquet(path_in)
 
     # Get all unique nummeraanduiding ids
-    ids = list(set(df.nummeraanduiding_id))
+    ids = list(set(df.nummeraanduiding_id.astype('int')))
 
     # Create query
     sql = f'SELECT DISTINCT \
                     v.nummeraanduiding_id\
-                    , v.pand_id\
                     , v.oppervlakte\
                     , v.geom AS geometry\
             FROM vbo v\
             WHERE v.nummeraanduiding_id::numeric IN {tuple(ids)}\
+            AND v.woon = true \
             AND v.einddatum  = 0 \
             AND v.oppervlakte <= 250 \
             AND v.statuscode IN (3, 4, 7)' # Filter data to make set smaller
@@ -231,7 +232,8 @@ def get_cbs(path_out: str) -> gpd.GeoDataFrame:
 
 def get_ses_woa(path_in: str,
                 path_out: str,
-                cbs_path: str) -> gpd.GeoDataFrame:
+                cbs_path: str,
+                ) -> gpd.GeoDataFrame:
     
     '''Get SES-WOA data provided by CBS and 
     combine them with CBS buurt information and
@@ -479,7 +481,7 @@ def get_max_mortgage(income1: int, income2: Optional[int] = 0, divorced=False):
     if income2 > 0:
         incomes = sorted([income1, income2])
         income_2016 = incomes[1] + (incomes[0] * 0.5) # In 2016, the lowest income wasn't fully used in calculating max mortgage
-        income_2022 = incomes[1] + incomes[0]
+        income_2022 = incomes[1] + (incomes[0] * 0.9) # In 2022 90 percent of second income was included
 
         if divorced:
             income_2016 = incomes[0]
@@ -552,7 +554,6 @@ def compare_jaren(gdf: gpd.GeoDataFrame,
                   income1: int,
                   income2: Optional[int] = 0,
                   region: bool = False,
-                  inflation: bool = True,
                   mortgage_range=0.9,
                   overwaarde=True,
                   divorced=False,
@@ -573,8 +574,7 @@ def compare_jaren(gdf: gpd.GeoDataFrame,
     income1: income first partner (used for max_mortgage calculation based on NIBUD)
     income2: income second partner (used for max_mortgage calculation basedon NIBUD)
     region: if True all adjecent gemeenten are filtered out as well
-    inflation: if True WOZ-values are adjusted for inflation
-    mortgage_range: a range of values used for searching for house as a percentage
+ß    mortgage_range: a range of values used for searching for house as a percentage
     overwaarde: if True overwaarde is taken into account (source CBS)
     divorced: if True lowest income is taken and overwaarde is halved
     '''
@@ -600,10 +600,6 @@ def compare_jaren(gdf: gpd.GeoDataFrame,
     # Get max mortgage
     max_2016, max_2022 = get_max_mortgage(income1, income2, divorced)
     
-    # Calculate inflation
-    if inflation:
-        max_2016 *= 1
-        max_2022 *= 0.86
         
     # Add overwaarde to mortgage if applicable
     if divorced and overwaarde:
